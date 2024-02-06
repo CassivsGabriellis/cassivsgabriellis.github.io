@@ -19,12 +19,12 @@ body[a="dark"] { @include dark-appearance; }
 // bg color is also needed in html in order to
 // block body's background propagation
 // see: https://stackoverflow.com/a/61265706
-html, body { background: white; }
+html, body { background: #242424; }
 
 html { height: 100%; }
 
 body {
-  color: black;
+  color: white;
   font-family: monospace;
   font-size: 16px;
   line-height: 1.4;
@@ -45,10 +45,21 @@ li { margin: 0.4rem 0; }
 
 *:target { background: yellow; }
 
+// Cor do sombreado das notas de rodapé
+*:target:not(a) {
+  background: #755a00;
+}
+
 .w {
   max-width: 640px;
   margin: 0 auto;
   padding: 4rem 2rem;
+
+  // Cor do link das publicações
+  a {
+    color: white;
+    text-decoration: underline;
+  }
 }
 
 hr {
@@ -62,7 +73,7 @@ hr {
 table { width: 100%; }
 
 table, th, td {
-  border: thin solid black;
+  border: thin solid #CCCCCC;
   border-collapse: collapse;
   padding: 0.4rem;
 }
@@ -81,7 +92,7 @@ div.highlighter-rouge code {
 
 blockquote {
   font-style: italic;
-  border: thin solid black;
+  border: thin solid #CCCCCC;
   padding: 1rem;
 
   p { margin: 0; }
