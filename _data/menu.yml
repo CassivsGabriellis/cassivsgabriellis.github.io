@@ -1,6 +1,6 @@
 entries:
   - title: sobre mim
-    url: sobre.html
+    url: about.html
     entries:
       - title: github
         url: https://github.com/CassivsGabriellis
@@ -17,7 +17,7 @@ entries:
       show_more_url: archive.html
 
   - title: publicações por categoria
-    url: categorias.html
+    url: categories.html
   
   - title: rss
     url: feed.xml
