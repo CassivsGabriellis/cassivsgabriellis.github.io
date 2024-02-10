@@ -1,49 +1,77 @@
 // -------------- THEME SWITCHER -------------- //
 @mixin dark-appearance {
   filter: invert(1);
+
   img {
     filter: invert(1);
 
-    &.ioda { filter: invert(0); }
+    &.ioda {
+      filter: invert(0);
+    }
   }
 }
 
-body[a="dark"] { @include dark-appearance; }
-
+body[a="dark"] {
+  @include dark-appearance;
+}
 
 @media (prefers-color-scheme: dark) {
-  body[a="auto"] { @include dark-appearance; }
+  body[a="auto"] {
+    @include dark-appearance;
+  }
 }
+
 // -------------------------------------------- //
 
-// bg color is also needed in html in order to
-// block body's background propagation
-// see: https://stackoverflow.com/a/61265706
-html, body { background: #242424; }
-
-html { height: 100%; }
-
+html,
 body {
-  color: white;
-  font-family: monospace;
-  font-size: 16px;
+  background-image: url('/assets/backgroung-image/fundo-iluminura-medieval.jpg');
+  background-repeat: no-repeat;
+  background-size: 100% 100%; // Modificado para cobrir completamente a tela
+  background-attachment: fixed;
+  color: black;
+  font-family: 'Augusta';
+  font-size: 20px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  letter-spacing: 1px;
   line-height: 1.4;
   margin: 0;
   min-height: 100%;
   overflow-wrap: break-word;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 }
 
-.post-meta { text-align: right; }
+.post-meta {
+  text-align: right;
+}
 
-h2, h3, h4, h5, h6 { margin-top: 3rem; }
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin-top: 2rem;
+}
 
-hr { margin: 2rem 0; }
+hr {
+  margin: 1rem 0;
+}
 
-p { margin: 1rem 0; }
+p {
+  margin: 1rem 0;
+}
 
-li { margin: 0.4rem 0; }
+li {
+  margin: 0.4rem 0;
+}
 
-*:target { background: yellow; }
+*:target {
+  background: yellow;
+}
 
 // Cor do sombreado das notas de rodapé
 *:target:not(a) {
@@ -51,13 +79,16 @@ li { margin: 0.4rem 0; }
 }
 
 .w {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 4rem 2rem;
+  max-width: 90%;
+  width: 100%;
+  margin: 2rem auto;
+  padding: 7rem;
+  display: flex;
+  flex-direction: column;
 
   // Cor do link das publicações
   a {
-    color: white;
+    color: black;
     text-decoration: underline;
   }
 }
@@ -66,13 +97,22 @@ hr {
   text-align: center;
   border: 0;
 
-  &:before { content: '/////' }
-  &:after { content: attr(data-content) '/////' }
+  &:before {
+    content: '/////'
+  }
+
+  &:after {
+    content: attr(data-content) '/////'
+  }
 }
 
-table { width: 100%; }
+table {
+  width: 100%;
+}
 
-table, th, td {
+table,
+th,
+td {
   border: thin solid #CCCCCC;
   border-collapse: collapse;
   padding: 0.4rem;
@@ -95,11 +135,34 @@ blockquote {
   border: thin solid #CCCCCC;
   padding: 1rem;
 
-  p { margin: 0; }
+  p {
+    margin: 0;
+  }
 }
 
 img {
   max-width: 100%;
+  height: auto;
+  /* Imagem automaticamente se adequa */
   display: block;
   margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+
+  html,
+  body {
+    font-size: 22px;
+  }
+
+  .w {
+    max-width: 800px;
+  }
+}
+
+@font-face {
+  font-family: 'Augusta';
+  src: url('/assets/css/fonts/Augusta.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
 }

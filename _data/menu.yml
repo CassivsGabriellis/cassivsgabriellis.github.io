@@ -1,5 +1,5 @@
 entries:
-  - title: sobre mim
+  - title: Sobre mim
     url: about.html
     entries:
       - title: github
@@ -9,14 +9,14 @@ entries:
       - title: linkedIn
         url: https://linkedin.com/in/cassivs-contato
 
-  - title: últimas publicações
+  - title: Últimas publicações
     post_list:
       limit: 5
       show_more: true
       show_more_text: Veja mais no arquivo...
       show_more_url: archive.html
 
-  - title: publicações por categoria
+  - title: Publicações por categoria
     url: categories.html
   
   - title: rss
