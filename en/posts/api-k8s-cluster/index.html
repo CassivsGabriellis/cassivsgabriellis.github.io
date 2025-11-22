@@ -1,0 +1,489 @@
+<!doctype html><html lang=en-us dir=ltr><head><meta charset=utf-8><meta name=viewport content="width=device-width"><link rel=icon type=image/ico href=https://www.foliocassianico.com.br/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://www.foliocassianico.com.br/favicon-16x16.png><link rel=icon type=image/png sizes=32x32 href=https://www.foliocassianico.com.br/favicon-32x32.png><link rel=icon type=image/png sizes=192x192 href=https://www.foliocassianico.com.br/android-chrome-192x192.png><link rel=apple-touch-icon sizes=180x180 href=https://www.foliocassianico.com.br/apple-touch-icon.png><meta name=description content><title>Building a metrics API on AWS EC2 with FastAPI, k3s (Kubernetes), Terraform, Ansible, and CI/CD with GitHub Actions | Cássio Gabriel</title><link rel=canonical href=https://www.foliocassianico.com.br/en/posts/api-k8s-cluster/><meta property="og:url" content="https://www.foliocassianico.com.br/en/posts/api-k8s-cluster/"><meta property="og:site_name" content="Cássio Gabriel"><meta property="og:title" content="Building a metrics API on AWS EC2 with FastAPI, k3s (Kubernetes), Terraform, Ansible, and CI/CD with GitHub Actions"><meta property="og:description" content="FastAPI-based API running in a k3s cluster inside an AWS EC2 instance, exposing performance metrics for the machine and the application, provisioned with Terraform, configured with Ansible, and updated via GitHub Actions."><meta property="og:locale" content="en_us"><meta property="og:type" content="article"><meta property="article:section" content="posts"><meta property="article:published_time" content="2025-11-15T00:00:00+00:00"><meta property="article:modified_time" content="2025-11-22T18:40:34+00:00"><meta property="article:tag" content="Cloud"><meta property="article:tag" content="Devops"><meta property="article:tag" content="System-Design"><meta property="article:tag" content="Aws"><meta property="article:tag" content="Ec2"><meta property="article:tag" content="Kubernetes"><link rel=stylesheet href=/assets/combined.min.1d9ba38136d24bf5ecdbf4eb600787b05e3af31c151dc3b703610e694f16b88f.css media=all></head><body class=auto><div class=content><header><div class=header><div class=language-switcher><a href=/en/posts/api-k8s-cluster/ class="lang-link active-lang">EN
+</a><a href=/pt-br/posts/api-k8s-cluster/ class=lang-link>PT(BR)</a></div><style>.header{position:relative}.language-switcher{position:absolute;top:3.5rem;left:40%;transform:translateX(250px);z-index:50;display:flex;gap:.4rem;font-size:.9rem}.lang-link{text-decoration:none;color:var(--primary);opacity:.7}.lang-link.active-lang{font-weight:700;opacity:1}@media(max-width:700px){.language-switcher{top:.4rem;left:auto;right:1rem;transform:none;font-size:.85rem}}</style><button id=theme-toggle class=theme-toggle type=button aria-label="Switch between dark and bright themes">
+<span class="theme-toggle__icon sun">☀️</span>
+<span class="theme-toggle__icon moon">🌙</span>
+</button>
+<script>(function(){const n="typo-color-mode",s=document.getElementById("theme-toggle");if(!s)return;function e(){return document.body.classList.contains("dark")}function t(){const t=document.documentElement;t.setAttribute("data-theme",e()?"dark":"light")}function o(){const o=localStorage.getItem(n);if(!o){t();return}const s=o==="dark";typeof invertBody=="function"&&s!==e()?invertBody():typeof invertBody!="function"&&(document.body.classList.toggle("dark",s),document.body.classList.toggle("light",!s)),t()}s.addEventListener("click",function(){typeof invertBody=="function"?invertBody():(document.body.classList.toggle("dark"),document.body.classList.toggle("light"));const s=e()?"dark":"light";localStorage.setItem(n,s),t()}),document.addEventListener("DOMContentLoaded",o)})()</script><style>.theme-toggle{position:absolute;top:3.5rem;left:27%;transform:translateX(300px);z-index:50;background:0 0;border:none;cursor:pointer;display:flex;align-items:center;gap:.3rem;font-size:1.1rem;opacity:.8;transition:opacity .2s ease}.theme-toggle:hover{opacity:.5}.theme-toggle__icon{font-size:1.2rem;line-height:1}.theme-toggle__icon.sun,.theme-toggle__icon.moon{display:none}html[data-theme=light] .theme-toggle__icon.moon{display:inline}html[data-theme=dark] .theme-toggle__icon.sun{display:inline}@media(max-width:700px){.theme-toggle{top:.4rem;left:auto;right:6rem;transform:none;font-size:1.1rem}}</style><h1 class=header-title>Cássio Gabriel</h1><div class=header-menu><p class=small><a href=/en/>/home</a></p><p class=small><a href=/en/projects>/projects</a></p><p class=small><a href=/en/posts>/posts</a></p></div></div></header><main class=main><div class=breadcrumbs><a href=/en/>~</a><span class=breadcrumbs-separator>/</span><a href=/en/posts/>Posts</a><span class=breadcrumbs-separator>/</span>
+<a href=/en/posts/api-k8s-cluster/>Building a metrics API on AWS EC2 with FastAPI, k3s (Kubernetes), Terraform, Ansible, and CI/CD with GitHub Actions</a></div><div class=autonumber><article><header class=single-intro-container><h1 class=single-title>Building a metrics API on AWS EC2 with FastAPI, k3s (Kubernetes), Terraform, Ansible, and CI/CD with GitHub Actions</h1><p class=single-summary>FastAPI-based API running in a k3s cluster inside an AWS EC2 instance, exposing performance metrics for the machine and the application, provisioned with Terraform, configured with Ansible, and updated via GitHub Actions.</p><div class=single-subsummary><div><p class=single-date>Published on:
+<time datetime=2025-11-15T00:00:00+00:00>November 15, 2025</time>
+&nbsp; · &nbsp;
+Last updated:
+<time datetime=2025-11-22T18:40:34+00:00>November 22, 2025</time>
+&nbsp; · &nbsp;21 min read</p></div></div></header><div class=single-layout><div class=single-main><div class=single-content><h2 class=heading id=purpose-of-this-project>Purpose of this project
+<a class=anchor href=#purpose-of-this-project>#</a></h2><p>Seeking to deepen my knowledge in cloud architecture and the different ways of building cloud environments, I decided to build an API from scratch and provision it on a Linux EC2 instance to test some of the concepts I have been learning over the last few days, mainly during my studies for the AWS Cloud Architect certification.</p><p>Objectively, I developed a Python (FastAPI) API that collects metrics from the instance and from the application running on it, and deployed it to run in a Kubernetes cluster on an EC2 instance in AWS. The entire infrastructure is provisioned with Terraform, the server and cluster configuration is done with Ansible, and the deployment is automated with GitHub Actions. The project was designed to be integrated later with Prometheus and Grafana for full observability.</p><h3 class=heading id=goals-of-this-project>Goals of this project
+<a class=anchor href=#goals-of-this-project>#</a></h3><ul><li>Build a simple API that will expose performance metrics for both the instance and the application itself, in Python (served by the FastAPI web framework);</li><li>Run it in a Kubernetes cluster inside a Linux AWS EC2 instance;</li><li>Provision it using Terraform (VPC, subnet, EC2, Security Groups, IAM);</li><li>Configure it with Ansible (installs Docker, K3s, dependencies, performs deploy);</li><li>Keep it updated via CI/CD with GitHub Actions (image build and pull from DockerHub, push, automatic deploy).</li></ul><h3 class=heading id=project-architecture-diagram>Project architecture diagram
+<a class=anchor href=#project-architecture-diagram>#</a></h3><p><figure><div class=img-container style=--w:1669;--h:1813><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/metrics-api-k3s-ec2-cicd-architecture.png width=1669 height=1813></div><div class=caption-container><figcaption>Diagram made with the Diagrams library (Diagram as Code)</figcaption></div></figure></p><hr><h2 class=heading id=api-with-fastapi>API with FastAPI
+<a class=anchor href=#api-with-fastapi>#</a></h2><p>The role of this API is to expose performance metrics both from the host where the pod is running and from the application itself, that is, the API itself, a backend software written in Python, packaged in Docker, and running inside a Kubernetes cluster — whose purpose is to collect and expose operational metrics from both the environment where it is running and its own internal state.</p><p>This is a fundamental layer to enable future integration with observability tools such as Prometheus and Grafana. For this, I chose the <a href=https://fastapi.tiangolo.com/>FastAPI</a> framework, which provides fast routes, excellent asynchronous performance and an internal automatic documentation model. This choice enables efficient communication between the distributed components of the cluster while keeping the implementation of endpoints simple.</p><p>The API design serves the following <em>endpoints</em>:</p><ul><li><code>GET /health</code>: used by Kubernetes for Liveness and Readiness probes.<ul><li>Example:</li></ul><div class=highlight><pre tabindex=0 class=chroma><code class=language-json data-lang=json><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;status&#34;</span><span class=p>:</span> <span class=s2>&#34;ok&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;app&#34;</span><span class=p>:</span> <span class=s2>&#34;k8s-cluster-performance-stack&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;version&#34;</span><span class=p>:</span> <span class=s2>&#34;1.0.0&#34;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div></li><li><code>GET /info</code>: provides information about the application running on the instance.<ul><li>Example:</li></ul><div class=highlight><pre tabindex=0 class=chroma><code class=language-json data-lang=json><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;app_name&#34;</span><span class=p>:</span> <span class=s2>&#34;k8s-cluster-performance-stack&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;version&#34;</span><span class=p>:</span> <span class=s2>&#34;1.0.0&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;environment&#34;</span><span class=p>:</span> <span class=s2>&#34;dev&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;server_time&#34;</span><span class=p>:</span> <span class=s2>&#34;2025-11-15T15:30:00Z&#34;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div></li><li><code>GET /metrics/system</code>: metrics from the host where the <em>pod</em> is running.<ul><li>Example:</li></ul><div class=highlight><pre tabindex=0 class=chroma><code class=language-json data-lang=json><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;cpu&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;percent&#34;</span><span class=p>:</span> <span class=mf>21.3</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;cores&#34;</span><span class=p>:</span> <span class=mi>2</span>
+</span></span><span class=line><span class=cl>    <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;memory&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;total_mb&#34;</span><span class=p>:</span> <span class=mi>993</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;used_mb&#34;</span><span class=p>:</span> <span class=mi>450</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;percent&#34;</span><span class=p>:</span> <span class=mf>45.3</span>
+</span></span><span class=line><span class=cl>    <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;disk&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;total_gb&#34;</span><span class=p>:</span> <span class=mf>20.0</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;used_gb&#34;</span><span class=p>:</span> <span class=mf>8.4</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;percent&#34;</span><span class=p>:</span> <span class=mf>42.0</span>
+</span></span><span class=line><span class=cl>    <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;load_average&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;1m&#34;</span><span class=p>:</span> <span class=mf>0.42</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;5m&#34;</span><span class=p>:</span> <span class=mf>0.36</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nt>&#34;15m&#34;</span><span class=p>:</span> <span class=mf>0.30</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div></li><li><code>GET /metrics/app</code>: metrics from the application itself (at “application” level).<ul><li>Example:</li></ul><div class=highlight><pre tabindex=0 class=chroma><code class=language-json data-lang=json><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;uptime_seconds&#34;</span><span class=p>:</span> <span class=mi>1234</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;requests_count&#34;</span><span class=p>:</span> <span class=mi>87</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=nt>&#34;startup_time&#34;</span><span class=p>:</span> <span class=s2>&#34;2025-11-15T15:00:00Z&#34;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div></li></ul><p>The following dependencies are used as requirements for the API to run, located in a <code>.txt</code> file in the root of the project repository:</p><pre tabindex=0><code>
+fastapi==0.121.3
+uvicorn[standard]==0.38.0
+psutil==7.1.3
+python-dotenv==1.2.1
+
+```
+
+To test locally, I used [Uvicorn](https://uvicorn.dev/), a server implementation based on the [ASGI](https://en.wikipedia.org/wiki/Asynchronous_Server_Gateway_Interface) protocol, in order to use the `/docs` section of FastAPI:
+```
+
+uvicorn app.main:app --reload
+</code></pre><p>The repository with the API code can be accessed <a href=https://github.com/CassivsGabriellis/metrics-api-k8s-cluster-performance/tree/main/app>here</a>.</p><hr><h2 class=heading id=containerizing-the-api-with-docker>Containerizing the API with Docker
+<a class=anchor href=#containerizing-the-api-with-docker>#</a></h2><p>Next comes the containerization of the API, since the rest of the architecture depends on a consistent, standardized, and easily replicable image. For this, I created a minimalist <strong>Dockerfile</strong>, based on a “slim” Python 3.12 image, ensuring that the environment would be lightweight, fast to build and suitable for running on machines with limited resources, such as a t3.small EC2 instance used in the AWS Free Tier.</p><p>Inside the Dockerfile, I define essential best practices such as configuring the environment variables <code>PYTHONDONTWRITEBYTECODE</code> and <code>PYTHONUNBUFFERED</code>, which reduce disk write overhead and improve log observability. Next, I install the build dependencies needed for packages like <code>psutil</code>, include the <code>requirements.txt</code> to install the Python dependencies and copy the code from the <code>app/</code> folder into the image. Finally, I configure the container to expose port 8000 and run the Uvicorn server, allowing the FastAPI API to respond to HTTP requests inside the Kubernetes cluster.</p><h3 class=heading id=docker-file-at-the-project-root>Docker file at the project root
+<a class=anchor href=#docker-file-at-the-project-root>#</a></h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-docker data-lang=docker><span class=line><span class=cl><span class=c># =========================</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># 1) Builder: installs deps</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># =========================</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>FROM</span><span class=w> </span><span class=s>python:3.12-slim</span><span class=w> </span><span class=k>AS</span><span class=w> </span><span class=s>builder</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># Better logging and no .pyc</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>ENV</span> <span class=nv>PYTHONDONTWRITEBYTECODE</span><span class=o>=</span><span class=m>1</span> <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>    <span class=nv>PYTHONUNBUFFERED</span><span class=o>=</span><span class=m>1</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>WORKDIR</span><span class=w> </span><span class=s>/app</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># Build dependencies (psutil, etc.)</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>RUN</span> apt-get update <span class=o>&amp;&amp;</span> <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>    apt-get install -y --no-install-recommends <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>        build-essential <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>    <span class=o>&amp;&amp;</span> rm -rf /var/lib/apt/lists/*<span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># Install Python dependencies in a venv</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>COPY</span> requirements.txt .<span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>RUN</span> python -m venv /opt/venv <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>    <span class=o>&amp;&amp;</span> /opt/venv/bin/pip install --upgrade pip <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>    <span class=o>&amp;&amp;</span> /opt/venv/bin/pip install --no-cache-dir -r requirements.txt<span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># =========================</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># 2) Runtime: final image</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># =========================</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>FROM</span><span class=w> </span><span class=s>python:3.12-slim</span><span class=w> </span><span class=k>AS</span><span class=w> </span><span class=s>runtime</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>ENV</span> <span class=nv>PYTHONDONTWRITEBYTECODE</span><span class=o>=</span><span class=m>1</span> <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>    <span class=nv>PYTHONUNBUFFERED</span><span class=o>=</span><span class=m>1</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>WORKDIR</span><span class=w> </span><span class=s>/app</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># Copy the already-prepared virtual environment</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>COPY</span> --from<span class=o>=</span>builder /opt/venv /opt/venv<span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>ENV</span> <span class=nv>PATH</span><span class=o>=</span><span class=s2>&#34;/opt/venv/bin:</span><span class=nv>$PATH</span><span class=s2>&#34;</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># Copy only the application code</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>COPY</span> app ./app<span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># API port</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>EXPOSE</span><span class=w> </span><span class=s>8000</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=c># Default variables</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>ENV</span> <span class=nv>APP_ENV</span><span class=o>=</span>prod
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c># Command to run the FastAPI API</span><span class=err>
+</span></span></span><span class=line><span class=cl><span class=err></span><span class=k>CMD</span> <span class=p>[</span><span class=s2>&#34;uvicorn&#34;</span><span class=p>,</span> <span class=s2>&#34;app.main:app&#34;</span><span class=p>,</span> <span class=s2>&#34;--host&#34;</span><span class=p>,</span> <span class=s2>&#34;0.0.0.0&#34;</span><span class=p>,</span> <span class=s2>&#34;--port&#34;</span><span class=p>,</span> <span class=s2>&#34;8000&#34;</span><span class=p>]</span><span class=err>
+</span></span></span></code></pre></div><h3 class=heading id=manual-image-build-and-push-for-testing>Manual image build and push (for testing)
+<a class=anchor href=#manual-image-build-and-push-for-testing>#</a></h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># Build the image</span>
+</span></span><span class=line><span class=cl>docker build -t cassiano00/metrics-api:latest .
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># Test locally</span>
+</span></span><span class=line><span class=cl>docker run --rm -p 8000:8000 cassiano00/metrics-api:latest
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># Push to Docker Hub (for Kubernetes to pull)</span>
+</span></span><span class=line><span class=cl>docker push cassiano00/metrics-api:latest
+</span></span></code></pre></div><p><figure><div class=img-container style=--w:1473;--h:677><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/running-locally-docker.png width=1473 height=677></div></figure></p><hr><h2 class=heading id=orchestration-in-a-kubernetes-cluster>Orchestration in a Kubernetes cluster
+<a class=anchor href=#orchestration-in-a-kubernetes-cluster>#</a></h2><p>With the image built, I orchestrate a Kubernetes cluster through YAML manifests. The first component created was <code>namespace.yaml</code>, a fundamental practice that logically organizes resources and avoids conflicts between different services within the cluster. Creating the <strong>metrics-api</strong> namespace ensures isolation and makes future management and automation operations easier.</p><p>To test locally, I use <a href=https://minikube.sigs.k8s.io>Minikube</a>, which implements a local Kubernetes cluster.</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Namespace</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>labels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span></code></pre></div><p>Applying the settings present in the <code>k8s/namespace.yaml</code> file:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>kubectl apply -f k8s/namespace.yaml
+</span></span></code></pre></div><p><figure><div class=img-container style=--w:501;--h:174><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/kubeclt-command-1.png width=501 height=174></div></figure></p><p>Next, I define <code>deployment.yaml</code>, a core Kubernetes resource responsible for managing and keeping the application running in a declarative way. In the Deployment, I configure 1 (one) replica, since this is a test environment. I specify the Docker image built earlier and add liveness and readiness probes pointing to the <code>/health</code> endpoint. These probes are essential for Kubernetes to automatically detect container failures and ensure that only healthy instances receive traffic. In addition, I configure CPU and memory <em>requests</em> and <em>limits</em>, preventing the container from consuming more resources than it should — which is critical in small environments such as a low-cost EC2.</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>apps/v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Deployment</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api-deployment</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>namespace</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>labels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>replicas</span><span class=p>:</span><span class=w> </span><span class=m>1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>selector</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>matchLabels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>template</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>labels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>containers</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span>- <span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>image</span><span class=p>:</span><span class=w> </span><span class=l>cassiano00/metrics-api:latest</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>imagePullPolicy</span><span class=p>:</span><span class=w> </span><span class=l>IfNotPresent</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>ports</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span>- <span class=nt>containerPort</span><span class=p>:</span><span class=w> </span><span class=m>8000</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>env</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span>- <span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>APP_ENV</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>value</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;prod&#34;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>resources</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>requests</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>cpu</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;100m&#34;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>memory</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;128Mi&#34;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>limits</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>cpu</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;500m&#34;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>memory</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;256Mi&#34;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>readinessProbe</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>httpGet</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>path</span><span class=p>:</span><span class=w> </span><span class=l>/health</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>port</span><span class=p>:</span><span class=w> </span><span class=m>8000</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>initialDelaySeconds</span><span class=p>:</span><span class=w> </span><span class=m>5</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>periodSeconds</span><span class=p>:</span><span class=w> </span><span class=m>10</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>timeoutSeconds</span><span class=p>:</span><span class=w> </span><span class=m>2</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>failureThreshold</span><span class=p>:</span><span class=w> </span><span class=m>3</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span><span class=nt>livenessProbe</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>httpGet</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>path</span><span class=p>:</span><span class=w> </span><span class=l>/health</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>port</span><span class=p>:</span><span class=w> </span><span class=m>8000</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>initialDelaySeconds</span><span class=p>:</span><span class=w> </span><span class=m>10</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>periodSeconds</span><span class=p>:</span><span class=w> </span><span class=m>20</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>timeoutSeconds</span><span class=p>:</span><span class=w> </span><span class=m>2</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>failureThreshold</span><span class=p>:</span><span class=w> </span><span class=m>3</span><span class=w>
+</span></span></span></code></pre></div><p>Running the configuration:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>kubectl apply -f k8s/deployment.yaml
+</span></span></code></pre></div><p><figure><div class=img-container style=--w:543;--h:88><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/kubeclt-command-2.png width=543 height=88></div></figure></p><p>With the Deployment defined, I create a <code>service.yaml</code> of type <strong>ClusterIP</strong> to provide a stable internal endpoint that abstracts the pods. The Service exposes port <code>80</code> internally and forwards calls to port <code>8000</code> on the container, standardizing access and allowing other components, such as <a href=https://kubernetes.io/docs/concepts/services-networking/ingress/>Ingress</a>, to interact with the backend without depending on the internal structure of the Deployment. This is a good isolation practice in clusters.</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Service</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api-service</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>namespace</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>labels</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>selector</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>app</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>ports</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span>- <span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>http</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>port</span><span class=p>:</span><span class=w> </span><span class=m>80</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>      </span><span class=nt>targetPort</span><span class=p>:</span><span class=w> </span><span class=m>8000</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>type</span><span class=p>:</span><span class=w> </span><span class=l>ClusterIP</span><span class=w>
+</span></span></span></code></pre></div><p>Applying the configuration:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>kubectl apply -f k8s/service.yaml
+</span></span></code></pre></div><p><figure><div class=img-container style=--w:568;--h:76><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/kubeclt-command-3.png width=568 height=76></div></figure></p><p>To finalize the Kubernetes layer, I implement the <code>ingress.yaml</code> file, responsible for providing an external HTTP interface to the cluster through the NGINX Ingress Controller. In the local environment, where Minikube is running with the Docker driver on Windows, direct access to the internal cluster IP is not possible. For this reason, I use <strong><code>minikube tunnel</code></strong>, which creates a route between the host and the Ingress Controller, reliably exposing incoming traffic on <code>127.0.0.1</code>.</p><p>With this configuration, Ingress acts as the official entry point of the application inside the cluster, mapping external requests to the internal Service (<code>metrics-api-service:80</code>). This removes the need for temporary tunnels such as <code>minikube service ... --url</code> and ensures a traffic flow identical to what is used in real environments: client → NGINX Ingress → Service → Pods.</p><p>By centralizing external access on Ingress, the architecture becomes more organized, scalable, and aligned with the pattern used in production Kubernetes clusters. This component also enables future extensions — such as TLS support, authentication, rate limiting, and advanced routing. In addition, it naturally prepares the environment for future integration with Prometheus and Grafana, facilitating the exposure of metrics, dashboards, and full observability of the application.</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-yaml data-lang=yaml><span class=line><span class=cl><span class=nt>apiVersion</span><span class=p>:</span><span class=w> </span><span class=l>networking.k8s.io/v1</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>kind</span><span class=p>:</span><span class=w> </span><span class=l>Ingress</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>metadata</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api-ingress</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>namespace</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>annotations</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span><span class=nt>kubernetes.io/ingress.class</span><span class=p>:</span><span class=w> </span><span class=s2>&#34;nginx&#34;</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=nt>spec</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=nt>rules</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>    </span>- <span class=nt>http</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>        </span><span class=nt>paths</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>          </span>- <span class=nt>path</span><span class=p>:</span><span class=w> </span><span class=l>/</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>pathType</span><span class=p>:</span><span class=w> </span><span class=l>Prefix</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>            </span><span class=nt>backend</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>              </span><span class=nt>service</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=nt>name</span><span class=p>:</span><span class=w> </span><span class=l>metrics-api-service</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                </span><span class=nt>port</span><span class=p>:</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>                  </span><span class=nt>number</span><span class=p>:</span><span class=w> </span><span class=m>80</span><span class=w>
+</span></span></span></code></pre></div><p>Running the configuration:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>kubectl apply -f k8s/ingress.yaml
+</span></span></code></pre></div><p><figure><div class=img-container style=--w:516;--h:75><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/kubeclt-command-4.png width=516 height=75></div></figure></p><p>Testing the endpoint via <code>curl</code>:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>curl http://127.0.0.1/health
+</span></span><span class=line><span class=cl>curl http://127.0.0.1/metrics/system
+</span></span></code></pre></div><p><figure><div class=img-container style=--w:1335;--h:275><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/kubeclt-command-5.png width=1335 height=275></div></figure></p><hr><h2 class=heading id=provisioning-the-infrastructure-with-terraform>Provisioning the infrastructure with Terraform
+<a class=anchor href=#provisioning-the-infrastructure-with-terraform>#</a></h2><p>Moving on to the infrastructure stage of the project, my priority was to establish a solid and reproducible foundation to run the Kubernetes cluster that will later host the metrics API. To do this, I started by provisioning the network and compute layers using Terraform. The goal was to ensure that the entire application foundation — from the VPC to the EC2 instance — was created in a declarative, auditable and consistent way. I created a dedicated VPC, a public subnet and a route table connected to an Internet Gateway, ensuring that the instance had internet access to install dependencies, pull images and run k3s without restrictions. Then I configured a Security Group with strictly necessary rules: SSH access for administration and open HTTP/HTTPS ports for the future Ingress Controller. With that in place, I defined a <strong>t3.small</strong> EC2 instance — enough for a validation environment — using the Ubuntu 22.04 AMI, ensuring compatibility with Docker, k3s and the rest of the stack tools.</p><p>The following items will be provisioned in the cloud:</p><ul><li>1 VPC</li><li>1 public subnet</li><li>Internet gateway + route table</li><li>1 ElasticIP (fixed public IP)</li><li>1 Security Group (SSH + HTTP/HTTPS)</li><li>1 EC2 instance (t3.small) that will serve as a <a href=https://docs.k3s.io/>k3s</a> node</li></ul><h3 class=heading id=configuring-the-vpc>Configuring the VPC
+<a class=anchor href=#configuring-the-vpc>#</a></h3><p>I started by creating a dedicated VPC with a large CIDR block (<code>10.0.0.0/16</code>), allowing flexibility for future expansion of subnets, load balancers or additional nodes. Then I configured a public subnet (<code>10.0.1.0/24</code>) with <code>map_public_ip_on_launch</code> enabled, ensuring that instances inside this subnet would automatically receive a public IP, eliminating the need for Elastic IPs in the validation environment. I associated this subnet with a route table containing the default route (<code>0.0.0.0/0</code>) pointing to a newly created Internet Gateway, ensuring full external connectivity — something essential so that the node can download packages, pull Docker images and communicate with public registries. I also provisioned a static IPv4 address via an ElasticIP associated with the instance.</p><p><strong><code>main.tf</code></strong>:</p><pre tabindex=0><code># VPC
+resource &#34;aws_vpc&#34; &#34;this&#34; {
+  cidr_block = &#34;10.0.0.0/16&#34;
+    tags = {
+        Name = &#34;${var.project_name}-vpc&#34;
+    }
+  enable_dns_hostnames = true
+  enable_dns_support = true
+}
+
+# Public Subnet
+resource &#34;aws_subnet&#34; &#34;public&#34; {
+  vpc_id                    = aws_vpc.this.id
+  cidr_block                = &#34;10.0.1.0/24&#34;
+  map_public_ip_on_launch   = true
+
+  tags = {
+    Name = &#34;${var.project_name}-public-subnet&#34;
+  }
+}
+
+# Public Route Table for subnet
+resource &#34;aws_route_table&#34; &#34;public&#34; {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block = &#34;0.0.0.0/0&#34;
+    gateway_id = aws_internet_gateway.this.id
+  }
+    tags = {
+        Name = &#34;${var.project_name}-public-rt&#34;
+    }
+}
+
+...
+
+# Elastic IP associated with the k3s_node instance
+resource &#34;aws_eip&#34; &#34;k3s_eip&#34; {
+  domain   = &#34;vpc&#34;
+  instance = aws_instance.k3s_node.id
+
+  tags = {
+    Name = &#34;${var.project_name}-eip&#34;
+  }
+}
+</code></pre><h3 class=heading id=configuring-a-security-group>Configuring a Security Group
+<a class=anchor href=#configuring-a-security-group>#</a></h3><p>On the security side, I built a Security Group following the principle of least privilege, allowing only the required traffic: port 22 for SSH (limited via a parameterized variable), port 80 to receive HTTP traffic in the future via Ingress, and port 443 to anticipate TLS scenarios. All other traffic remains blocked.</p><p><strong><code>main.tf</code></strong>:</p><pre tabindex=0><code># Security Group for EC2 instance
+resource &#34;aws_security_group&#34; &#34;ec2_sg&#34; {
+  name        = &#34;${var.project_name}-ec2-sg&#34;
+  description = &#34;Security group for metrics API k3s node&#34;
+  vpc_id      = aws_vpc.this.id
+
+  # SSH access
+  ingress {
+    description      = &#34;Allow SSH&#34;
+    from_port        = 22
+    to_port          = 22
+    protocol         = &#34;tcp&#34;
+    cidr_blocks      = [var.allowed_ssh_cidr]
+  }
+  
+  # HTTP access
+  ingress {
+    description      = &#34;Allow HTTP&#34;
+    from_port        = 80
+    to_port          = 80
+    protocol         = &#34;tcp&#34;
+    cidr_blocks      = [&#34;0.0.0.0/0&#34;]
+  }
+
+  # HTTPS (for future TLS)
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = &#34;tcp&#34;
+    cidr_blocks = [&#34;0.0.0.0/0&#34;]
+  }
+
+  # Egress: allow everything
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = &#34;-1&#34;
+    cidr_blocks = [&#34;0.0.0.0/0&#34;]
+  }
+
+  tags = {
+    Name = &#34;${var.project_name}-ec2-sg&#34;
+  }
+}
+</code></pre><h3 class=heading id=configuring-the-ec2-instance>Configuring the EC2 instance
+<a class=anchor href=#configuring-the-ec2-instance>#</a></h3><p>With the network set up, I completed the provisioning by creating a <code>t3.small</code> EC2 instance, sufficient for test scenarios, using the official Ubuntu 22.04 AMI. This choice was deliberate, given its optimizations, full compatibility with Docker, and native support for <strong>systemd</strong> — essential for the proper operation of k3s services. In this way, the entire foundational layer of the cluster was defined not only declaratively, but also tuned to run containerized workloads.</p><p><strong><code>main.tf</code></strong>:</p><pre tabindex=0><code># Ubuntu AMI
+data &#34;aws_ami&#34; &#34;ubuntu&#34; {
+  most_recent = true
+  owners      = [&#34;099720109477&#34;] # Canonical
+
+  filter {
+    name   = &#34;name&#34;
+    values = [&#34;ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*&#34;]
+  }
+
+  filter {
+    name   = &#34;virtualization-type&#34;
+    values = [&#34;hvm&#34;]
+  }
+}
+
+# EC2 instance that will run k3s
+resource &#34;aws_instance&#34; &#34;k3s_node&#34; {
+  ami                         = data.aws_ami.ubuntu.id
+  instance_type               = &#34;t3.small&#34;
+  subnet_id                   = aws_subnet.public.id
+  vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
+  key_name                    = var.key_name
+  associate_public_ip_address = false 
+
+  tags = {
+    Name = &#34;${var.project_name}-k3s-node&#34;
+  }
+}
+</code></pre><p>Before this process, I had already set up my environment with the <a href=https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>AWS CLI</a>, so that the appropriate permissions for connecting to my AWS profile were established.</p><p>I also had to create a <strong>key pair</strong> in the <code>sa-east-1</code> region so that Terraform could apply the configuration to create the EC2 instance, which is referenced as <code>key_name = var.key_name</code>.</p><p>Then, by initializing the Terraform environment in the <code>/infra/terraform</code> directory and applying the defined configuration:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>terraform init
+</span></span><span class=line><span class=cl>terraform apply
+</span></span></code></pre></div><p>The environment was successfully provisioned in AWS:</p><p><figure><div class=img-container style=--w:824;--h:200><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/terraform-apply-config.png width=824 height=200></div></figure><figure><div class=img-container style=--w:1648;--h:764><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/created-instance-after-terraform-apply.png width=1648 height=764></div></figure></p><p>The rest of the Terraform configuration-as-code can be accessed <a href=https://github.com/CassivsGabriellis/metrics-api-k8s-cluster-performance/tree/main/infra/terraform>here</a>.</p><hr><h2 class=heading id=applying-configuration-with-ansible>Applying configuration with Ansible
+<a class=anchor href=#applying-configuration-with-ansible>#</a></h2><p>With the infrastructure provisioned, I moved on to the step of automating the configuration of the Kubernetes node using Ansible. My goal was to transform a freshly created instance into a functional Kubernetes node, ready to receive workloads, without any manual configuration. I structured a playbook that runs from package updates and installation of base dependencies, through the full configuration of the container runtime and the k3s distribution itself. I installed Docker to ensure support for containerd-based workloads and compatibility with development tools, and then ran the official k3s installation script with specific options — including disabling Traefik, keeping the cluster clean for later deployments.</p><p><strong><code>playbook.yaml</code></strong>:</p><pre tabindex=0><code>---
+- name: Configure EC2 as k3s Kubernetes node
+  hosts: k3s_node
+  become: true
+  vars:
+    k3s_version: &#34;&#34; 
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install base packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker.io
+        state: present
+
+    - name: Enable and start Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    - name: Download and install k3s
+      shell: |
+        curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC=&#34;server --disable traefik&#34; sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Install NGINX Ingress Controller
+      become: false
+      command: &gt;
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.14.0/deploy/static/provider/cloud/deploy.yaml
+
+    - name: Wait for k3s service to be active
+      systemd:
+        name: k3s
+        state: started
+        enabled: true
+
+    - name: Ensure .kube directory exists for ubuntu user
+      file:
+        path: /home/ubuntu/.kube
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: &#34;0700&#34;
+
+    - name: Copy k3s kubeconfig to ubuntu user
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /home/ubuntu/.kube/config
+        owner: ubuntu
+        group: ubuntu
+        mode: &#34;0600&#34;
+        remote_src: yes
+    
+    - name: Export KUBECONFIG in ubuntu .bashrc
+      lineinfile:
+        path: /home/ubuntu/.bashrc
+        regexp: &#39;^export KUBECONFIG=&#39;
+        line: &#39;export KUBECONFIG=$HOME/.kube/config&#39;
+        create: yes
+        owner: ubuntu
+        group: ubuntu
+        mode: &#34;0644&#34;
+
+    - name: Create kubectl symlink for convenience
+      file:
+        src: /usr/local/bin/kubectl
+        dest: /usr/local/bin/k3s-kubectl
+        state: link
+      ignore_errors: yes
+
+    - name: Ensure kubectl installed (k3s includes it)
+      file:
+        src: /usr/local/bin/k3s
+        dest: /usr/local/bin/kubectl
+        state: link
+      ignore_errors: yes
+</code></pre><p>Along with my host specifications in the local <strong><code>host_vars/k3s-ec2-node.yaml</code></strong> file:</p><pre tabindex=0><code>ansible_host: &lt;instance-public-ip&gt;
+ansible_user: ubuntu
+ansible_ssh_private_key_file: &lt;metrics-api-key.pem-local-address&gt;
+</code></pre><p><strong><code>inventory.ini</code></strong>:</p><pre tabindex=0><code>[k3s_node]
+k3s-ec2-node
+</code></pre><p>With these settings in place, I run the command for Ansible to apply them:</p><pre tabindex=0><code>ansible-playbook -i inventory.ini playbook.yaml
+</code></pre><p><figure><div class=img-container style=--w:1395;--h:956><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/ansible-config-success.png width=1395 height=956></div></figure></p><p>After installing k3s via Ansible, I kept the default kubeconfig generated by the service at <code>/etc/rancher/k3s/k3s.yaml</code>, without modifying the <code>127.0.0.1:6443</code> endpoint, since cluster administration will be done directly on the EC2 instance itself using <code>kubectl</code>. During automation, the playbook handled installing Docker, starting k3s as a service, configuring the binaries and symlinks needed to use the kubectl client, ensuring that all the essential utilities were available to the machine’s default user. At the end of this step, the EC2 instance was already operating as a functional Kubernetes node, initialized and ready to receive applications and deployments automated via the CI/CD pipeline.</p><p>To check the current state of the instance, I accessed it via SSH to verify the node running inside it:<figure><div class=img-container style=--w:966;--h:89><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/ssh-instance-access.png width=966 height=89></div></figure></p><hr><h2 class=heading id=cicd-pipeline-with-github-actions>CI/CD pipeline with GitHub Actions
+<a class=anchor href=#cicd-pipeline-with-github-actions>#</a></h2><p>With the infrastructure provisioned and the k3s cluster operational on EC2, it is time to design a fully automated CI/CD pipeline using GitHub Actions. The goal is to eliminate any need for manual intervention in both build and deploy, ensuring that every change to the API code results in a new version of the service running in the cluster in an immediate, predictable, and reliable way.</p><h3 class=heading id=cluster-bootstrap-on-the-ec2-instance>Cluster bootstrap on the EC2 instance
+<a class=anchor href=#cluster-bootstrap-on-the-ec2-instance>#</a></h3><p>Before continuing with the creation of the CI/CD flow, it is important to note that the instance is currently without Kubernetes objects on EC2. If you run <code>kubectl get ns</code> and <code>kubectl get all -n metrics-api</code>, the result will be that <code>metrics-api</code> does not appear in the list of <strong>namespaces</strong> (a way of organizing and isolating resources within a cluster) and nothing exists in <code>-n metrics-api</code> (because the namespace does not exist).</p><p><figure><div class=img-container style=--w:938;--h:274><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/no-namespace.png width=938 height=274></div></figure></p><p>Therefore, it is necessary to:</p><ul><li>Create the <code>metrics-api</code> namespace;</li><li>Create the <code>metrics-api-deployment</code> Deployment, the Service, and the Ingress.</li></ul><p>To do this, I perform a manual bootstrap on EC2, that is, I manually initialize and configure the instance.</p><ol><li><p>I copied the Kubernetes <em>manifests</em> from the <code>/k8s</code> folder into EC2 (from WSL):</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>scp -i ~/.ssh/metrics-api-key.pem -r k8s ubuntu@&lt;public-ip-instance&gt;:/home/ubuntu/k8s
+</span></span></code></pre></div></li></ol><p><figure><div class=img-container style=--w:1098;--h:122><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/scp-to-instance.png width=1098 height=122></div></figure></p><ol start=2><li><p>After that, I accessed the EC2 instance to check if the folder was present:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>ssh -i ~/.ssh/metrics-api-key.pem ubuntu@&lt;public-ip-instance&gt;
+</span></span></code></pre></div></li></ol><p><figure><div class=img-container style=--w:916;--h:140><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/k8s-inside-instance.png width=916 height=140></div></figure></p><ol start=3><li><p>I applied the <em>manifests</em> inside the instance:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>kubectl apply -f /home/ubuntu/k8s/namespace.yaml
+</span></span><span class=line><span class=cl>kubectl apply -f /home/ubuntu/k8s/deployment.yaml
+</span></span><span class=line><span class=cl>kubectl apply -f /home/ubuntu/k8s/service.yaml
+</span></span><span class=line><span class=cl>kubectl apply -f /home/ubuntu/k8s/ingress.yaml
+</span></span></code></pre></div></li><li><p>And I checked that the <em>manifests</em> inside the instance were running:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>kubectl get ns
+</span></span><span class=line><span class=cl>kubectl get deploy -n metrics-api
+</span></span><span class=line><span class=cl>kubectl get pods -n metrics-api
+</span></span><span class=line><span class=cl>kubectl get svc -n metrics-api
+</span></span></code></pre></div></li></ol><p>In this way:</p><ul><li>The <code>metrics-api</code> namespace will exist</li><li>The <code>metrics-api-deployment</code> will exist</li><li>The Service and Ingress will exist</li></ul><p>Thus, on the next execution of GitHub Actions, the command:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-sh data-lang=sh><span class=line><span class=cl>kubectl -n metrics-api <span class=nb>set</span> image deployment/metrics-api-deployment <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>  metrics-api<span class=o>=</span><span class=si>${</span><span class=nv>IMAGE</span><span class=si>}</span>
+</span></span></code></pre></div><p>will work, since the deployment specifications already exist and only need the Docker image.</p><p><figure><div class=img-container style=--w:887;--h:562><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/applied-manifests-inside-instance.png width=887 height=562></div></figure></p><p>The following Repository <code>secrets</code> were set to be used in the <code>ci-cd.yaml</code> file:<figure><div class=img-container style=--w:794;--h:357><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/github-repo-secrets.png width=794 height=357></div></figure></p><ul><li><code>DOCKERHUB_USERNAME</code> - Docker Hub username</li><li><code>DOCKERHUB_TOKEN</code> - Docker Hub access token/password</li><li><code>EC2_HOST</code> - public IP of the instance (the <code>ec2_public_ip</code> value generated by Terraform)</li><li><code>EC2_SSH_USER</code> - I chose <code>ubuntu</code> for Ubuntu AMIs</li><li><code>EC2_SSH_KEY</code> - content of the private key for SSH (<code>.pem</code> file)</li></ul><p>This initial process creates the base structure of the cluster — including the <code>metrics-api</code> namespace and the essential resources — allowing the automated pipeline to work on top of an existing foundation. Once these initial objects are applied to the cluster, all subsequent updates can be controlled exclusively by CI/CD, without the need to re-apply manifests.</p><p>With this foundation in place, I built the GitHub Actions pipeline divided into two phases:</p><ol><li><p><strong>Build and Push of the Docker image:</strong>
+The workflow starts by checking out the repository and setting up Docker Buildx. It then builds the API image and pushes it to Docker Hub using two tags: <code>latest</code>, intended for continuous development environments, and an immutable tag based on the commit SHA, ensuring traceability and reliable versioning. This approach guarantees that every build is reproducible and tied to a specific point in the code’s evolution.</p></li><li><p><strong>Automatic deploy to the k3s cluster:</strong>
+In the second stage, the pipeline establishes an SSH connection to the EC2 instance and uses <code>kubectl set image</code> to update the existing Deployment with the newly published image. Since the cluster already has all manifests applied from the initial bootstrap, the pipeline only needs to adjust the Deployment’s image, making the process fast, efficient, and free of resource duplication. After the update, the workflow waits for the rollout to confirm that the new version has been successfully applied.</p></li></ol><p><figure><div class=img-container style=--w:1882;--h:856><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/github-build-push-deploy.png width=1882 height=856></div></figure></p><p>Thus, the full pipeline — from code to production update — has become fully automated, deterministic and aligned with modern CI/CD best practices in Kubernetes environments.</p><p>The full pipeline code in GitHub Actions can be accessed <a href=https://github.com/CassivsGabriellis/metrics-api-k8s-cluster-performance/blob/main/.github/workflows/ci-cd.yaml>here</a>.</p><h3 class=heading id=tests-performed-inside-the-ec2-instance-after-deploy>Tests performed inside the EC2 instance after deploy
+<a class=anchor href=#tests-performed-inside-the-ec2-instance-after-deploy>#</a></h3><h4 class=heading id=overview-of-the-node-resources-in-the-api-namespace-and-pod-listing>Overview of the node, resources in the API namespace and pod listing
+<a class=anchor href=#overview-of-the-node-resources-in-the-api-namespace-and-pod-listing>#</a></h4><p><figure><div class=img-container style=--w:1905;--h:466><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/after-github-deploy-1.png width=1905 height=466></div></figure></p><h4 class=heading id=testing-the-api-endpoints-via-curl-inside-the-ec2-instance>Testing the API endpoints via <code>curl</code> inside the EC2 instance
+<a class=anchor href=#testing-the-api-endpoints-via-curl-inside-the-ec2-instance>#</a></h4><p><figure><div class=img-container style=--w:1915;--h:560><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/after-github-deploy-2.png width=1915 height=560></div></figure></p><h4 class=heading id=accessing-the-fastapi-docs-section-via-the-ec2-instance-public-ip>Accessing the FastAPI <code>docs</code> section via the EC2 instance public IP
+<a class=anchor href=#accessing-the-fastapi-docs-section-via-the-ec2-instance-public-ip>#</a></h4><p><figure><div class=img-container style=--w:1917;--h:862><img loading=lazy alt src=/en/posts/api-k8s-cluster/images/docs-fastapi-public-api.png width=1917 height=862></div></figure></p><hr><h2 class=heading id=summary-accessing-the-api-on-ec2-and-practical-use-of-the-instance>Summary: Accessing the API on EC2 and practical use of the instance
+<a class=anchor href=#summary-accessing-the-api-on-ec2-and-practical-use-of-the-instance>#</a></h2><p>With provisioning complete, the EC2 instance ceases to be just an “infrastructure node” and starts acting as a stable entry point for the metrics API. Below, I describe how it is exposed, how it can be consumed externally, and how it can serve as a basis for future extensions of the project.</p><h3 class=heading id=instance-characteristics-and-public-endpoint>Instance characteristics and public endpoint
+<a class=anchor href=#instance-characteristics-and-public-endpoint>#</a></h3><p>The EC2 instance was provisioned as a single Kubernetes node with k3s, using the <code>t3.small</code> type, which provides 2 vCPUs and 2 GiB of RAM — a better balance between cost and capacity to run the cluster, the Ingress Controller and the application simultaneously.</p><p>From a network perspective, the instance is in:</p><ul><li><p>A dedicated VPC (<code>10.0.0.0/16</code>), with:</p><ul><li>Public subnet (<code>10.0.1.0/24</code>) for the k3s node;</li><li>Internet Gateway associated with the VPC;</li><li>Public route table with <code>0.0.0.0/0</code> egress to the IGW;</li></ul></li><li><p>A specific Security Group for the k3s node, allowing:</p><ul><li>SSH (port 22) only from the CIDR defined in <code>allowed_ssh_cidr</code>;</li><li>HTTP (port 80) open to <code>0.0.0.0/0</code> for public access to the API;</li><li>HTTPS (port 443) open for future TLS scenarios.</li></ul></li></ul><p>In addition, the instance uses an <strong>Elastic IP</strong>, provisioned via Terraform and exposed through the <code>ec2_public_ip</code> output. This ensures that:</p><ul><li>The instance’s public IPv4 remains stable across reboots;</li><li>The CI/CD pipeline and any external clients can point to a fixed address, without needing to update settings on every stop/start.</li></ul><p>In practice, this Elastic IP works as the “raw public endpoint” of the API.</p><h3 class=heading id=api-exposure-via-nginx-ingress>API exposure via NGINX Ingress
+<a class=anchor href=#api-exposure-via-nginx-ingress>#</a></h3><p>Internally, HTTP traffic is routed by the <strong>NGINX Ingress Controller</strong>, installed in the k3s cluster. The logical topology is as follows:</p><pre tabindex=0><code>Cliente → Elastic IP (port 80) → EC2 (Security Group) 
+        → ingress-nginx Service LoadBalancer
+        → Ingress (rules / path /) 
+        → Service ClusterIP (metrics-api-service) 
+        → API pod (container FastAPI on the port 8000)
+</code></pre><p>The <code>Ingress</code> resource configured for the <code>metrics-api</code> namespace routes <code>/</code> to <code>metrics-api-service</code>, which in turn forwards requests to the <code>metrics-api-deployment</code> Deployment. This means that, externally, the API can be consumed directly using the Elastic IP on port 80:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>curl http://&lt;elastic-ip&gt;/health
+</span></span></code></pre></div><p>This <code>/health</code> endpoint is exposed by the FastAPI application and works as a simple availability check for the service. In this way, any HTTP client — from monitoring scripts to observability tools — can use this address for basic validations or integrations with health probes.</p><h3 class=heading id=using-the-instance-for-inspection-debugging-and-operations>Using the instance for inspection, debugging and operations
+<a class=anchor href=#using-the-instance-for-inspection-debugging-and-operations>#</a></h3><p>Beyond serving the API externally, the instance is also the central point for administrative and troubleshooting operations. From an SSH session using the private key (<code>EC2_SSH_KEY</code>) and the configured user (<code>EC2_SSH_USER</code>, in this case <code>ubuntu</code>), it is possible to:</p><ul><li><p>Inspect the state of the cluster:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>kubectl get nodes -o wide
+</span></span><span class=line><span class=cl>kubectl get all -n metrics-api
+</span></span></code></pre></div></li><li><p>Monitor the behavior of the application pods:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>kubectl get pods -n metrics-api -o wide
+</span></span><span class=line><span class=cl>kubectl logs -n metrics-api &lt;nome-do-pod&gt;
+</span></span></code></pre></div></li><li><p>Test the API from inside the cluster, either via port-forward or by running commands inside the pod:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># Port-forward of the Service to the local machine (inside EC2)</span>
+</span></span><span class=line><span class=cl>kubectl port-forward svc/metrics-api-service -n metrics-api 8000:80
+</span></span><span class=line><span class=cl>curl http://127.0.0.1:8000/health
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># Direct call from inside the pod</span>
+</span></span><span class=line><span class=cl>kubectl <span class=nb>exec</span> -it -n metrics-api &lt;pod-name&gt; -- curl -s http://127.0.0.1:8000/health
+</span></span></code></pre></div></li></ul><p>This turns the instance into a single observation point for the application’s lifecycle: from the Kubernetes level (Deployments, Pods, Services, Ingress) to the application level (logs, HTTP responses, health status).</p><h3 class=heading id=future-extensions-observability-tls-and-custom-domains>Future extensions: observability, TLS and custom domains
+<a class=anchor href=#future-extensions-observability-tls-and-custom-domains>#</a></h3><p>The way the instance was designed allows a series of natural evolutions, without the need to restructure the base:</p><ul><li><p><strong>Integration with Prometheus and Grafana:</strong>
+The current k3s cluster can receive an observability stack (such as kube-prometheus-stack or Prometheus Operator) to collect metrics from both infrastructure and the API. The Ingress Controller already provides an HTTP entry point that can be reused to expose dashboards or metrics endpoints.</p></li><li><p><strong>TLS and custom domain (HTTPS):</strong>
+Since the API is already exposed via an Elastic IP, it is simple to create a DNS record in a custom domain (via Route 53 or another provider) pointing to that IP. Then, you can add a new Ingress with a defined host (for example, <code>api.metrics.mydomain.com</code>) and integrate a certificate issuer (such as AWS Certificate Manager or Let’s Encrypt) to serve HTTPS traffic.</p></li><li><p><strong>Cluster expansion and new services:</strong>
+The current instance can be the starting point for hosting other microservices related to metrics, dashboards or auxiliary APIs. New namespaces, Deployments and Services can be added to the cluster, all exposed via NGINX Ingress Controller with specific route and host rules.</p></li></ul><p>In summary, the EC2 instance — combined with k3s, NGINX Ingress, Docker and the CI/CD pipeline in GitHub Actions — now operates as a complete application environment, capable not only of serving the metrics API in production, but also of supporting tests, experiments, and future extensions in terms of observability, security (TLS) and logical scalability of the solution.</p></div></div><aside class="toc toc-sticky"><p class=toc-title><strong>Table of contents</strong></p><div class=toc-inner><nav id=TableOfContents><ul><li><a href=#purpose-of-this-project>Purpose of this project</a><ul><li><a href=#goals-of-this-project>Goals of this project</a></li><li><a href=#project-architecture-diagram>Project architecture diagram</a></li></ul></li><li><a href=#api-with-fastapi>API with FastAPI</a></li><li><a href=#containerizing-the-api-with-docker>Containerizing the API with Docker</a><ul><li><a href=#docker-file-at-the-project-root>Docker file at the project root</a></li><li><a href=#manual-image-build-and-push-for-testing>Manual image build and push (for testing)</a></li></ul></li><li><a href=#orchestration-in-a-kubernetes-cluster>Orchestration in a Kubernetes cluster</a></li><li><a href=#provisioning-the-infrastructure-with-terraform>Provisioning the infrastructure with Terraform</a><ul><li><a href=#configuring-the-vpc>Configuring the VPC</a></li><li><a href=#configuring-a-security-group>Configuring a Security Group</a></li><li><a href=#configuring-the-ec2-instance>Configuring the EC2 instance</a></li></ul></li><li><a href=#applying-configuration-with-ansible>Applying configuration with Ansible</a></li><li><a href=#cicd-pipeline-with-github-actions>CI/CD pipeline with GitHub Actions</a><ul><li><a href=#cluster-bootstrap-on-the-ec2-instance>Cluster bootstrap on the EC2 instance</a></li><li><a href=#tests-performed-inside-the-ec2-instance-after-deploy>Tests performed inside the EC2 instance after deploy</a></li></ul></li><li><a href=#summary-accessing-the-api-on-ec2-and-practical-use-of-the-instance>Summary: Accessing the API on EC2 and practical use of the instance</a><ul><li><a href=#instance-characteristics-and-public-endpoint>Instance characteristics and public endpoint</a></li><li><a href=#api-exposure-via-nginx-ingress>API exposure via NGINX Ingress</a></li><li><a href=#using-the-instance-for-inspection-debugging-and-operations>Using the instance for inspection, debugging and operations</a></li><li><a href=#future-extensions-observability-tls-and-custom-domains>Future extensions: observability, TLS and custom domains</a></li></ul></li></ul></nav></div></aside></div></article><div class=single-pagination><hr><div class=flexnowrap><div class=single-pagination-prev><div class=single-pagination-container-prev><div class=single-pagination-text>←</div><div class=single-pagination-text><a href=/en/posts/folio-creation/>Folio Cassianico (Architecture & Deployment)</a></div></div></div><div class=single-pagination-next></div></div><hr></div><div class=back-to-top><a href=#top>back to top</a></div></div></main></div><footer><p>Copyright © 2025 Cássio Gabriel</p></footer></body><script src=/js/theme-switch.js></script><script defer src=/js/copy-code.js></script></html>
